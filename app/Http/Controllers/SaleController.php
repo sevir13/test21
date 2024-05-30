@@ -10,30 +10,28 @@ class SaleController extends Controller
 {
     public function upload()
     {
+        $requestUrl = "http://89.108.115.241:6969/api/sales";
+        $perPage = 500;
         $dateFrom = "2020-01-01";
         $dateTo = date("Y-m-d");
 
-        $page = 1;
-        $r = true;
+        $response = Http::get($requestUrl, [
+            "dateFrom" => $dateFrom,
+            "dateTo" => $dateTo,
+            "page" => 1,
+            "limit" => $perPage,
+            "key" => "E6kUTYrYwZq2tN4QEtyzsbEBk3ie"
+        ])->body();
 
-        while($r) {
-            $response = Http::get("http://89.108.115.241:6969/api/sales", [
-                "dateFrom" => $dateFrom,
-                "dateTo" => $dateTo,
-                "page" => $page,
-                "limit" => 100,
-                "key" => "E6kUTYrYwZq2tN4QEtyzsbEBk3ie"
-            ]);
+        $responseArr = json_decode($response, true);
 
-            $responseBody = $response->body();
-            $responseArr = json_decode($responseBody, true);
-            $responseData = $responseArr["data"];
+        if(isset($responseArr["meta"]["total"])) {
+            $pageTotal = ceil($responseArr["meta"]["total"] / $perPage);
+            $pageFrom = 1;
 
-            if(count($responseData)) {
-                ProcessSales::dispatch($responseData);
-                $page++;
-            } else {
-                $r = false;
+            while($pageFrom <= $pageTotal) {
+                ProcessSales::dispatch("sales", $requestUrl, $pageFrom, $pageFrom + 10, $perPage, $dateFrom, $dateTo);
+                $pageFrom += 10;
             }
         }
     }
